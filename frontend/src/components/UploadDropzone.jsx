@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { CloudUpload, FileText, Loader2 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
-
+import { Link } from "next/link"
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 
@@ -134,9 +134,9 @@ export function UploadDropzone({ compact = false }) {
                         <Progress value={status.progress} />
                         <div className="text-xs text-muted-foreground">{status.progress}%</div>
                         <div className="flex gap-2">
-                            <a href={`${API_BASE}/contracts/${createdId}/download`}>
+                            <Link href={`${API_BASE}/contracts/${createdId}/download`}>
                                 <Button variant="outline" className="w-full">Download PDF</Button>
-                            </a>
+                            </Link>
                             <Button
                                 className="w-full flex-1"
                                 onClick={() => {

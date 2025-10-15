@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfidenceBar } from "@/components/ConfidenceBar";
 import { Download, Eye, RefreshCw, Search } from "lucide-react";
-
+import { Link } from "next/link"
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 
@@ -158,18 +158,18 @@ export function ContractTable() {
                                 </td>
                                 <td className="px-4 py-3 align-top">
                                     <div className="flex justify-end gap-2">
-                                        <a href={`${API_BASE}/contracts/${c.contract_id}/download`}>
+                                        <Link href={`${API_BASE}/contracts/${c.contract_id}/download`}>
                                             <Button variant="outline" size="sm" className="gap-2">
                                                 <Download className="h-4 w-4" />
                                                 Download
                                             </Button>
-                                        </a>
-                                        <a href={`/contracts/${c.contract_id}`}>
+                                        </Link>
+                                        <Link href={`/contracts/${c.contract_id}`}>
                                             <Button size="sm" className="gap-2">
                                                 <Eye className="h-4 w-4" />
                                                 Details
                                             </Button>
-                                        </a>
+                                        </Link>
                                     </div>
                                 </td>
                             </tr>

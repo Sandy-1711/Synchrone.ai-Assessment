@@ -67,12 +67,10 @@ export default function ContractDetailsPage() {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
-          <a href={downloadUrl}>
-            <Button className="gap-2">
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-          </a>
+          <Button className="gap-2" onClick={() => window.location.href = downloadUrl}>
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
         </div>
       </div>
 
