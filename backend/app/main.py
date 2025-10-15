@@ -13,7 +13,8 @@ from app.services.scoring import ContractScorer
 from app.utils.pdf_extractor import PDFExtractor
 from app.models.contract import ContractResponse, ContractStatus, ProcessingStatus
 from typing import List
-
+from fastapi.responses import StreamingResponse
+import io
 
 app = FastAPI()
 app.add_middleware(
@@ -154,6 +155,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 @app.post("/contracts/upload", response_model=ContractResponse)
 async def upload_contract(file: UploadFile = File(...)):
+    #TODO CHeck for this print
+    print(file.contentType)
     if not file.filename.endswith(".pdf"):
         return JSONResponse(
             status_code=400,
@@ -192,12 +195,10 @@ async def upload_contract(file: UploadFile = File(...)):
         contract_id = str(result.inserted_id)
         folder = "/tmp"
         os.makedirs(folder, exist_ok=True)
-        # Save temporary file for processing
         temp_file = os.path.join(folder, f"{contract_id}.pdf")
         with open(temp_file, "wb") as f:
             f.write(contents)
 
-        # Trigger background processing
         process_contract_task.delay(contract_id, temp_file)
 
         return ContractResponse(
@@ -207,8 +208,8 @@ async def upload_contract(file: UploadFile = File(...)):
             message="Contract uploaded successfully and is pending processing.",
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
+        print(f"Error uploading contract: {e}")
+        raise
 
 @app.get("/contracts/{contract_id}/status", response_model=ProcessingStatus)
 async def get_contract_status(contract_id: str):
@@ -224,10 +225,8 @@ async def get_contract_status(contract_id: str):
             updated_at=contract["updated_at"],
         )
     except Exception as e:
-        if "not found" in str(e).lower():
-            raise
-        raise HTTPException(status_code=500, detail=str(e))
-
+        print(f"Error getting contract status: {e}")
+        raise
 
 @app.get("/contracts/{contract_id}")
 async def get_contract_data(contract_id: str):
@@ -244,7 +243,48 @@ async def get_all_contracts():
 
 @app.get("/contracts/{contract_id}/download")
 async def download_contract(contract_id: str):
-    return {"message": f"Contract {contract_id} downloaded successfully."}
+    try:
+        contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        file_id = ObjectId(contract["file_id"])
+        grid_out = await fs_bucket.open_download_stream(file_id)
+        contents = await grid_out.read()
+        return StreamingResponse(
+            io.BytesIO(contents),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{contract["filename"]}"'
+            }
+        )
+    except Exception as e:
+        print(f"Error downloading contract: {e}")
+        raise
+
+@app.delete("/contracts/{contract_id}")
+async def delete_contract(contract_id: str):
+    """
+    Delete a contract and its associated file
+    """
+    try:
+        contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        
+        # Delete file from GridFS
+        file_id = ObjectId(contract["file_id"])
+        await fs_bucket.delete(file_id)
+        
+        # Delete contract metadata
+        await db.contracts.delete_one({"_id": ObjectId(contract_id)})
+        
+        return {"message": "Contract deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception:
+        raise
 
 
 @app.get("/health")
