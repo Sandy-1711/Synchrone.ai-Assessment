@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     MONGO_DB: str
 
     REDIS_URL: str = "redis://redis:6379"
-
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-3.5-turbo"
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "claude-2"
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-pro"
 
