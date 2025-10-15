@@ -26,6 +26,8 @@ class ContractParser:
         try:
             extracted_data = json.loads(response)
         except json.JSONDecodeError:
+            print("LLM response.text output:\n", response)  # log the issue
+
             # Try to extract JSON from markdown code blocks
             json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
             if json_match:
@@ -40,10 +42,12 @@ class ContractParser:
     def _create_extraction_prompt(self, text: str) -> str:
         """Create detailed extraction prompt for LLM"""
         return f"""
-You are a contract analysis expert. Extract the following information from the contract text and return ONLY a valid JSON object with no additional text.
+You MUST return ONLY valid minified JSON.
+No explanation. No markdown. No backticks. No comments.
+If data not found, use null.
 
 CONTRACT TEXT:
-{text[:15000]}
+{text}
 
 EXTRACT THE FOLLOWING (return null if not found):
 

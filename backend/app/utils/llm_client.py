@@ -94,6 +94,7 @@ class LLMClient:
                     "max_output_tokens": max_tokens,
                 },
             )
+            print("LLM raw response:\n", response)
             return response.text
         except Exception as e:
-            raise Exception(f"Anthropic API error: {str(e)}")
+            raise Exception(f"Gemini API error: {str(e)}")

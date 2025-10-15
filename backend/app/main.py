@@ -94,23 +94,23 @@ def process_contract_task(contract_id: str, file_path: str):
         # Extract text from PDF
         extractor = PDFExtractor()
         pdf_text = extractor.extract_text(file_path)
-
+        print(f"Extracted text from PDF Extractor \n${pdf_text}")
         sync_db.contracts.update_one(
             {"_id": ObjectId(contract_id)}, {"$set": {"progress": 30}}
         )
-
+        print(f"Parsing the PDF Text using LLM")
         # Parse contract using LLM
         parser = ContractParser()
         parsed_data = parser.parse_contract(pdf_text)
-
         sync_db.contracts.update_one(
             {"_id": ObjectId(contract_id)}, {"$set": {"progress": 60}}
         )
 
+        print(f"parsed_data \n${parsed_data}")
         # Calculate scores
         scorer = ContractScorer()
         score_result = scorer.calculate_score(parsed_data)
-
+        print(f"Scored Result \n${score_result}")
         # Prepare final data
         contract_data = {
             **parsed_data,
