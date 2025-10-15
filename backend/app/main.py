@@ -11,7 +11,7 @@ from datetime import datetime
 from app.services.parser import ContractParser
 from app.services.scoring import ContractScorer
 from app.utils.pdf_extractor import PDFExtractor
-from app.models.contract import ContractResponse, ContractStatus
+from app.models.contract import ContractResponse, ContractStatus, ProcessingStatus
 from typing import List
 
 
@@ -152,16 +152,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
-
-
-@app.get("/")
-async def say_hello():
-    return {"message": "Hello"}
-
-
 @app.post("/contracts/upload", response_model=ContractResponse)
 async def upload_contract(file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
@@ -210,22 +200,33 @@ async def upload_contract(file: UploadFile = File(...)):
         # Trigger background processing
         process_contract_task.delay(contract_id, temp_file)
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "contract_id": contract_id,
-                "filename": file.filename,
-                "status": ContractStatus.pending,
-                "message": "Contract uploaded successfully and is pending processing.",
-            },
+        return ContractResponse(
+            contract_id=contract_id,
+            filename=file.filename,
+            status=ContractStatus.pending,
+            message="Contract uploaded successfully and is pending processing.",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
-@app.get("/contracts/{contract_id}/status")
+@app.get("/contracts/{contract_id}/status", response_model=ProcessingStatus)
 async def get_contract_status(contract_id: str):
-    return {"contract_id": contract_id, "status": "active"}
+    try:
+        contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        return ProcessingStatus(
+            contract_id=contract_id,
+            status=contract["status"],
+            progress=contract["progress"],
+            error=contract.get("error"),
+            updated_at=contract["updated_at"],
+        )
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/contracts/{contract_id}")
@@ -244,3 +245,13 @@ async def get_all_contracts():
 @app.get("/contracts/{contract_id}/download")
 async def download_contract(contract_id: str):
     return {"message": f"Contract {contract_id} downloaded successfully."}
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.get("/")
+async def say_hello():
+    return {"message": "Hello"}

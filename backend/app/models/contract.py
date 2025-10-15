@@ -11,8 +11,17 @@ class ContractStatus(str, Enum):
     completed = "completed"
     failed = "failed"
 
+
 class ContractResponse(BaseModel):
     contract_id: str
     filename: str
     status: ContractStatus
     message: str
+
+
+class ProcessingStatus(BaseModel):
+    contract_id: str
+    status: ContractStatus
+    progress: int = 0
+    error: Optional[str] = None
+    updated_at: datetime
