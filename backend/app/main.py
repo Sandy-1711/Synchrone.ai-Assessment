@@ -3,6 +3,7 @@ from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Query
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 from bson import ObjectId
 from app.config import settings
@@ -11,8 +12,13 @@ from datetime import datetime
 from app.services.parser import ContractParser
 from app.services.scoring import ContractScorer
 from app.utils.pdf_extractor import PDFExtractor
-from app.models.contract import ContractResponse, ContractStatus, ProcessingStatus
-from typing import List
+from app.models.contract import (
+    ContractResponse,
+    ContractStatus,
+    ProcessingStatus,
+    ContractListResponse,
+)
+from typing import List, Optional
 from fastapi.responses import StreamingResponse
 import io
 
@@ -155,8 +161,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 @app.post("/contracts/upload", response_model=ContractResponse)
 async def upload_contract(file: UploadFile = File(...)):
-    #TODO CHeck for this print
-    print(file.contentType)
     if not file.filename.endswith(".pdf"):
         return JSONResponse(
             status_code=400,
@@ -211,6 +215,7 @@ async def upload_contract(file: UploadFile = File(...)):
         print(f"Error uploading contract: {e}")
         raise
 
+
 @app.get("/contracts/{contract_id}/status", response_model=ProcessingStatus)
 async def get_contract_status(contract_id: str):
     try:
@@ -228,17 +233,72 @@ async def get_contract_status(contract_id: str):
         print(f"Error getting contract status: {e}")
         raise
 
+
 @app.get("/contracts/{contract_id}")
 async def get_contract_data(contract_id: str):
     return {"contract_id": contract_id, "status": "executed"}
 
 
-@app.get("/contracts")
-async def get_all_contracts():
-    return [
-        {"contract_id": "1", "status": "executed"},
-        {"contract_id": "2", "status": "active"},
-    ]
+@app.get("/contracts", response_model=ContractListResponse)
+async def get_all_contracts(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    status: Optional[ContractStatus] = Query(None),
+    sort_by: str = Query(
+        "uploaded_at", regex="^(uploaded_at|filename|status|overall_score)$"
+    ),
+    order: str = Query("desc", regex="^(asc|desc)$"),
+):
+    try:
+        # Build filter
+        filter_query = {}
+        if status:
+            filter_query["status"] = status
+
+        # Calculate skip
+        skip = (page - 1) * limit
+
+        # Build sort
+        sort_order = 1 if order == "asc" else -1
+
+        # Get total count
+        total = await db.contracts.count_documents(filter_query)
+
+        # Get contracts
+        cursor = (
+            db.contracts.find(filter_query)
+            .sort(sort_by, sort_order)
+            .skip(skip)
+            .limit(limit)
+        )
+        contracts = await cursor.to_list(length=limit)
+
+        # Format response
+        items = []
+        for contract in contracts:
+            items.append(
+                {
+                    "contract_id": str(contract["_id"]),
+                    "filename": contract["filename"],
+                    "status": contract["status"],
+                    "uploaded_at": contract["uploaded_at"],
+                    "overall_score": contract.get("parsed_data", {}).get(
+                        "overall_score"
+                    ),
+                    "file_size": contract.get("file_size"),
+                }
+            )
+
+        return ContractListResponse(
+            total=total,
+            page=page,
+            limit=limit,
+            pages=(total + limit - 1) // limit,
+            items=items,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/contracts/{contract_id}/download")
@@ -255,11 +315,12 @@ async def download_contract(contract_id: str):
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f'attachment; filename="{contract["filename"]}"'
-            }
+            },
         )
     except Exception as e:
         print(f"Error downloading contract: {e}")
         raise
+
 
 @app.delete("/contracts/{contract_id}")
 async def delete_contract(contract_id: str):
@@ -268,19 +329,19 @@ async def delete_contract(contract_id: str):
     """
     try:
         contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
-        
+
         if not contract:
             raise HTTPException(status_code=404, detail="Contract not found")
-        
+
         # Delete file from GridFS
         file_id = ObjectId(contract["file_id"])
         await fs_bucket.delete(file_id)
-        
+
         # Delete contract metadata
         await db.contracts.delete_one({"_id": ObjectId(contract_id)})
-        
+
         return {"message": "Contract deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception:
