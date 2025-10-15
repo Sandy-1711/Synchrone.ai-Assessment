@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { CloudUpload, FileText, Loader2 } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
-import { Link } from "next/link"
+import Link from "next/link"
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
 
 

@@ -1,6 +1,6 @@
 import "@/app/globals.css";
 import { ReactNode } from "react";
-import { Link } from "next/link";
+import Link from "next/link";
 export const metadata = {
   title: "Contract Console",
   description: "Smart contract processing console",
