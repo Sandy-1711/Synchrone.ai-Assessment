@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:7.0
@@ -8,8 +6,8 @@ services:
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${MONGO_DB}
     volumes:
       - mongodb_data:/data/db
@@ -34,9 +32,16 @@ services:
       - "8000:8000"
     environment:
       - MONGO_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
-      - REDIS_URL=redis://redis:6379
+      - MONGO_DB=${MONGO_DB}
+      - REDIS_URL=${REDIS_URL}
       - GEMINI_API_KEY=${GEMINI_API_KEY}      # ✅ Use Gemini instead of OpenAI
-      - GEMINI_MODEL=gemini-1.5-pro
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}      # ✅ Use OpenAI instead of Gemini
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}      # ✅ Use Anthropic instead of OpenAI
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS}
     volumes:
       - ./backend:/app
       - contract_uploads:/app/uploads
@@ -53,9 +58,14 @@ services:
     restart: always
     environment:
       - MONGO_URL=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
-      - REDIS_URL=redis://redis:6379
-      - GEMINI_API_KEY=${GEMINI_API_KEY}      # ✅ Update Celery worker too
-      - GEMINI_MODEL=gemini-1.5-pro
+      - MONGO_DB=${MONGO_DB}
+      - REDIS_URL=${REDIS_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}      # ✅ Use Gemini instead of OpenAI
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}      # ✅ Use OpenAI instead of Gemini
+      - OPENAI_MODEL=${OPENAI_MODEL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}      # ✅ Use Anthropic instead of OpenAI
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL}
     volumes:
       - ./backend:/app
       - contract_uploads:/app/uploads

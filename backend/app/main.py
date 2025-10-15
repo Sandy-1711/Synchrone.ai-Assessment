@@ -198,7 +198,7 @@ async def upload_contract(file: UploadFile = File(...)):
         }
         result = await db.contracts.insert_one(contract_doc)
         contract_id = str(result.inserted_id)
-        folder = "/tmp"
+        folder = "/app/uploads"
         os.makedirs(folder, exist_ok=True)
         temp_file = os.path.join(folder, f"{contract_id}.pdf")
         with open(temp_file, "wb") as f:

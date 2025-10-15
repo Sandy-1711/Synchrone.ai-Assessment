@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-pro"
 
     MAX_FILE_SIZE: int = 52428800  # 50MB
-    ALLOWED_EXTENSIONS: str = ("pdf",)
+    ALLOWED_EXTENSIONS: str = "pdf"
     UPLOAD_DIR: str = "/app/uploads"
 
     EXTRACTION_TIMEOUT: int = 300  # 5 minutes
