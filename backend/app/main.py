@@ -17,6 +17,7 @@ from app.models.contract import (
     ContractStatus,
     ProcessingStatus,
     ContractListResponse,
+    ContractData,
 )
 from typing import List, Optional
 from fastapi.responses import StreamingResponse
@@ -234,9 +235,40 @@ async def get_contract_status(contract_id: str):
         raise
 
 
-@app.get("/contracts/{contract_id}")
+@app.get("/contracts/{contract_id}", response_model=ContractData)
 async def get_contract_data(contract_id: str):
-    return {"contract_id": contract_id, "status": "executed"}
+    try:
+        contract = await db.contracts.find_one({"_id": ObjectId(contract_id)})
+        if not contract:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        if contract["status"] != "completed":
+            raise HTTPException(
+                status_code=404,
+                detail=f"Contract status is {contract['status']}. Data available only when completed.",
+            )
+        parsed_data = contract.get("parsed_data", {})
+        return ContractData(
+            contract_id=contract_id,
+            filename=contract["filename"],
+            uploaded_at=contract["uploaded_at"],
+            completed_at=contract.get("completed_at"),
+            overall_score=parsed_data.get("overall_score", 0),
+            category_scores=parsed_data.get("category_scores", {}),
+            party_identification=parsed_data.get("party_identification", {}),
+            account_information=parsed_data.get("account_information", {}),
+            financial_details=parsed_data.get("financial_details", {}),
+            payment_structure=parsed_data.get("payment_structure", {}),
+            revenue_classification=parsed_data.get("revenue_classification", {}),
+            sla_terms=parsed_data.get("sla_terms", {}),
+            missing_fields=parsed_data.get("missing_fields", []),
+            confidence_levels=parsed_data.get("confidence_levels", {}),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting contract data: {e}")
+        raise
 
 
 @app.get("/contracts", response_model=ContractListResponse)
